@@ -1,7 +1,21 @@
 #ifndef DATASET_H
 #define DATASET_H
 
-#include <stddef.h>
+typedef enum {
+    TYPE_INT,
+    TYPE_FLOAT,
+    TYPE_STRING,
+} DataType;
+
+typedef struct {
+    char *name;
+    DataType type;
+    void *data;
+} Field;
+
+typedef struct {
+    Field *fields;
+} Row;
 
 typedef struct {
     size_t start;
@@ -10,8 +24,22 @@ typedef struct {
     double *tab;
 } Dataset;
 
-// Function prototypes
+typedef struct {
+    Field *schema;
+    size_t num_fields;
+    Row *rows;
+    size_t num_rows;
+    size_t capacity;
+} DatasetV2;
+
+
 Dataset *dataset_init(size_t initial_size);
+
+DatasetV2 *create_dataset(const Field *schema, size_t num_fields, size_t capacity);
+
+void add_row(DatasetV2 *ds, void **values);
+
+void free_dataset(DatasetV2 *ds);
 
 void dataset_destroy(Dataset *ds);
 

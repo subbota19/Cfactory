@@ -11,7 +11,7 @@
 
 // Function to initialize the dataset
 Dataset *dataset_init(size_t initial_size) {
-    Dataset *ds = (Dataset *) malloc(sizeof(Dataset));
+    Dataset *ds = malloc(sizeof(Dataset));
     if (ds == NULL) {
         perror("Failed to allocate memory for dataset");
         exit(EXIT_FAILURE);
@@ -29,6 +29,105 @@ Dataset *dataset_init(size_t initial_size) {
     }
 
     return ds;
+}
+
+DatasetV2 *create_dataset(const Field *schema, const size_t num_fields, const size_t capacity) {
+    DatasetV2 *ds = malloc(sizeof(DatasetV2));
+    if (!ds) {
+        perror("Failed to allocate memory for Dataset");
+        exit(EXIT_FAILURE);
+    }
+
+    ds->schema = malloc(sizeof(Field) * num_fields);
+    if (!ds->schema) {
+        perror("Failed to allocate memory for Schema");
+        free(ds);
+        exit(EXIT_FAILURE);
+    }
+
+    for (size_t i = 0; i < num_fields; ++i) {
+        // allocates memory for the new string dynamically
+        ds->schema[i].name = strdup(schema[i].name);
+        ds->schema[i].type = schema[i].type;
+        ds->schema[i].data = NULL;
+    }
+
+    ds->num_fields = num_fields;
+    ds->num_rows = 0;
+    ds->capacity = capacity;
+    ds->rows = malloc(sizeof(Row) * ds->capacity);
+
+    return ds;
+}
+
+void add_row(DatasetV2 *ds, void **values) {
+    if (ds->num_rows >= ds->capacity) {
+        ds->capacity *= 2;
+        ds->rows = realloc(ds->rows, sizeof(Row) * ds->capacity);
+        if (!ds->rows) {
+            perror("Failed to reallocate memory for Row");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    Row *row = &ds->rows[ds->num_rows];
+    row->fields = malloc(sizeof(Field) * ds->num_fields);
+    if (!row->fields) {
+        perror("Failed to allocate memory for Row");
+        exit(EXIT_FAILURE);
+    }
+
+    for (size_t i = 0; i < ds->num_fields; ++i) {
+        row->fields[i].name = ds->schema[i].name;
+        row->fields[i].type = ds->schema[i].type;
+        switch (row->fields[i].type) {
+            case TYPE_INT:
+                row->fields[i].data = malloc(sizeof(int));
+                if (!row->fields[i].data) {
+                    perror("Failed to allocate memory for Field");
+                    exit(EXIT_FAILURE);
+                }
+                *(int *) row->fields[i].data = *(int *) values[i];
+                break;
+            case TYPE_FLOAT:
+                row->fields[i].data = malloc(sizeof(float));
+                if (!row->fields[i].data) {
+                    perror("Failed to allocate memory for Field");
+                    exit(EXIT_FAILURE);
+                }
+                *(float *) row->fields[i].data = *(float *) values[i];
+                break;
+            case TYPE_STRING:
+                row->fields[i].data = strdup(values[i]);
+                if (!row->fields[i].data) {
+                    perror("Failed to allocate memory for Field");
+                    exit(EXIT_FAILURE);
+                }
+                break;
+            default:
+                row->fields[i].data = NULL;
+                break;
+        }
+    }
+
+    ds->num_rows++;
+}
+
+void free_dataset(DatasetV2 *ds) {
+    for (size_t i = 0; i < ds->num_fields; ++i) {
+        free(ds->schema[i].name);
+    }
+    free(ds->schema);
+
+    for (size_t i = 0; i < ds->num_rows; ++i) {
+        const Row *row = &ds->rows[i];
+        for (size_t j = 0; j < ds->num_fields; ++j) {
+            free(row->fields[j].data);
+        }
+        free(row->fields);
+    }
+    free(ds->rows);
+    free(ds);
 }
 
 // Function to destroy the dataset and free memory
