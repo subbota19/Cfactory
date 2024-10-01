@@ -56,3 +56,5 @@ bin/
 
 # cLion
 .idea/
+venv/
+build/

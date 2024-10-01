@@ -9,28 +9,6 @@
 // realloc grows or shrinks storage
 // aligned_alloc ensures nondefault alignment.
 
-// Function to initialize the dataset
-Dataset *dataset_init(size_t initial_size) {
-    Dataset *ds = malloc(sizeof(Dataset));
-    if (ds == NULL) {
-        perror("Failed to allocate memory for dataset");
-        exit(EXIT_FAILURE);
-    }
-
-    ds->start = 0;
-    ds->len = 0;
-    ds->max_len = initial_size;
-    ds->tab = (double *) malloc(initial_size * sizeof(double));
-
-    if (ds->tab == NULL) {
-        perror("Failed to allocate memory for tab");
-        free(ds);
-        exit(EXIT_FAILURE);
-    }
-
-    return ds;
-}
-
 DatasetV2 *create_dataset(const Field *schema, const size_t num_fields, const size_t capacity) {
     DatasetV2 *ds = malloc(sizeof(DatasetV2));
     if (!ds) {
@@ -130,57 +108,80 @@ void free_dataset(DatasetV2 *ds) {
     free(ds);
 }
 
-// Function to destroy the dataset and free memory
-void dataset_destroy(Dataset *ds) {
-    if (ds) {
-        free(ds->tab);
-        free(ds);
+void free_row(const DatasetV2 *ds, const size_t index) {
+    const Row *row = &ds->rows[index];
+    for (size_t i = 0; i < ds->num_fields; ++i) {
+        free(row->fields[i].data);
     }
+    free(row->fields);
 }
 
-// Function to append a new element to the dataset
-void dataset_append(Dataset *ds, double value) {
-    if (ds->len >= ds->max_len) {
-        ds->max_len *= 2;
-        ds->tab = (double *) realloc(ds->tab, ds->max_len * sizeof(double));
-        if (ds->tab == NULL) {
-            perror("Failed to reallocate memory for tab");
+void shrink_capacity(DatasetV2 *ds) {
+    if (ds->num_rows < ds->capacity / 2) {
+        ds->capacity /= 2; // Shrink capacity by half
+        ds->rows = realloc(ds->rows, sizeof(Row) * ds->capacity);
+        if (!ds->rows) {
+            perror("Failed to shrink memory");
             exit(EXIT_FAILURE);
         }
-    }
-    ds->tab[ds->len++] = value;
-}
-
-// Function to return an element by index
-double dataset_return_element(Dataset *ds, size_t index) {
-    if (index < ds->len) {
-        return ds->tab[index];
-    } else {
-        fprintf(stderr, "Index out of bounds\n");
-        exit(EXIT_FAILURE);
+        printf("Capacity shrunk to %zu\n", ds->capacity);
     }
 }
 
-// Function to resize the dataset manually
-void dataset_resize(Dataset *ds, size_t new_size) {
-    if (new_size < ds->len) {
-        ds->len = new_size;
+int remove_row_by_index(DatasetV2 *ds, const size_t index) {
+    if (index >= ds->num_rows) {
+        return -1;
     }
-    ds->tab = (double *) realloc(ds->tab, new_size * sizeof(double));
-    if (ds->tab == NULL) {
-        perror("Failed to reallocate memory for resizing");
-        exit(EXIT_FAILURE);
+
+    free_row(ds, index);
+
+    for (size_t i = index; i < ds->num_rows - 1; ++i) {
+        ds->rows[i] = ds->rows[i + 1];
     }
-    ds->max_len = new_size;
+
+    ds->num_rows--;
+
+    shrink_capacity(ds);
+
+    return 0;
 }
 
-// Function to delete an element by index (shifting the remaining elements)
-void dataset_delete(Dataset *ds, size_t index) {
-    if (index < ds->len) {
-        memmove(&ds->tab[index], &ds->tab[index + 1], (ds->len - index - 1) * sizeof(double));
-        ds->len--;
-    } else {
-        fprintf(stderr, "Index out of bounds for deletion\n");
-        exit(EXIT_FAILURE);
+void print_row(const DatasetV2 *ds, const size_t index) {
+    const Row *row = get_row_by_index(ds, index);
+
+    if (row != NULL) {
+        for (size_t i = 0; i < ds->num_fields; ++i) {
+            const Field *schema = &ds->schema[i];
+
+            printf("%s: ", schema->name);
+
+            switch (schema->type) {
+                case TYPE_INT:
+                    printf("%d\t", *(int *) row->fields[i].data);
+                    break;
+                case TYPE_FLOAT:
+                    printf("%f\t", *(float *) row->fields[i].data);
+                    break;
+                case TYPE_STRING:
+                    printf("%s\t", (char *) row->fields[i].data);
+                    break;
+                default:
+                    printf("Unknown Type\t");
+                    break;
+            }
+
+        }
+        printf("\n");
     }
+}
+
+Row *get_row_by_index(const DatasetV2 *ds, const size_t index) {
+    if (index < ds->num_rows) {
+        return &ds->rows[index];
+    }
+    return NULL;
+}
+
+size_t get_num_rows(const DatasetV2 *ds) {
+    return ds->num_rows;
 }

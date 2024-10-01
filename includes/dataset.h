@@ -33,22 +33,21 @@ typedef struct {
 } DatasetV2;
 
 
-Dataset *dataset_init(size_t initial_size);
-
 DatasetV2 *create_dataset(const Field *schema, size_t num_fields, size_t capacity);
 
 void add_row(DatasetV2 *ds, void **values);
 
 void free_dataset(DatasetV2 *ds);
 
-void dataset_destroy(Dataset *ds);
+void shrink_capacity(DatasetV2 *ds);
 
-void dataset_append(Dataset *ds, double value);
+int remove_row_by_index(DatasetV2 *ds, size_t index);
 
-double dataset_return_element(Dataset *ds, size_t index);
+Row *get_row_by_index(const DatasetV2 *ds, size_t index);
 
-void dataset_resize(Dataset *ds, size_t new_size);
+size_t get_num_rows(const DatasetV2 *ds);
 
-void dataset_delete(Dataset *ds, size_t index);
+void print_row(const DatasetV2 *ds, size_t index);
+
 
 #endif

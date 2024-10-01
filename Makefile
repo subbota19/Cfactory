@@ -35,3 +35,10 @@ clean:
 # Run the program
 run: $(TARGET)
 	$(TARGET)
+
+cython-build:
+	python setup.py build_ext --inplace
+cython-clean:
+	python setup.py clean --all
+	rm -f src/_dataset*.so
+
