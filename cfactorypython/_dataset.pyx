@@ -27,7 +27,7 @@ cdef extern from "dataset.h" nogil:
 
     # Function declarations
     DatasetV2 *create_dataset(const Field *schema, const size_t num_fields, const size_t capacity)
-    void add_row(DatasetV2 *ds, void **values)
+    void add_row_v2(DatasetV2 *ds, Row *row)
     void free_dataset(DatasetV2 *ds)
     int remove_row_by_index(DatasetV2 *ds, const size_t index)
     void print_row(const DatasetV2 *ds, const size_t index)
@@ -37,18 +37,46 @@ cdef extern from "dataset.h" nogil:
 from libc.stdlib cimport malloc, free, realloc, exit
 from libc.string cimport strdup
 
-
 # Python-side wrapper classes
+
+cdef class PyRow:
+    cdef Row *row
+
+    def __cinit__(self, fields):
+        cdef int num_fields = len(fields)
+        self.row = <Row *>malloc(sizeof(Row))
+        self.row.fields = <Field *>malloc(num_fields * sizeof(Field))
+
+        for i, (name, value) in enumerate(fields.items()):
+            self.row.fields[i].name = strdup(name.encode('utf-8'))
+
+            if isinstance(value, int):
+                self.row.fields[i].type = TYPE_INT
+                self.row.fields[i].data = malloc(sizeof(int))
+                # *(<int *>self.row.fields[i].data) = value
+                (<int *>self.row.fields[i].data)[0] = value
+
+            elif isinstance(value, float):
+                self.row.fields[i].type = TYPE_FLOAT
+                self.row.fields[i].data = malloc(sizeof(float))
+                (<float *>self.row.fields[i].data)[0] = value
+
+            elif isinstance(value, str):
+                self.row.fields[i].type = TYPE_STRING
+                self.row.fields[i].data = strdup(value.encode('utf-8'))
+
+            else:
+                raise ValueError("Unsupported value type")
+
+    def __dealloc__(self):
+        free(self.row.fields)
+        free(self.row)
+
 cdef class PyDataset:
     cdef DatasetV2 *c_ds
 
     def __cinit__(self, schema, capacity=10):
-        """
-        Initialize the Dataset.
 
-        :param schema: List of tuples [(name: str, type: str), ...]
-        :param capacity: Initial capacity of the dataset
-        """
         cdef size_t num_fields = len(schema)
         cdef Field *c_schema = <Field *> malloc(sizeof(Field) * num_fields)
         if not c_schema:
@@ -64,20 +92,17 @@ cdef class PyDataset:
             elif type_str == 'string':
                 c_schema[i].type = TYPE_STRING
             else:
-                c_schema[i].type = TYPE_STRING  # Default to string
-            c_schema[i].data = NULL
+                c_schema[i].data = NULL
 
         self.c_ds = create_dataset(c_schema, num_fields, capacity)
-        free(c_schema)  # Assuming create_dataset copies the schema
+        free(c_schema)
 
     def __dealloc__(self):
         if self.c_ds != NULL:
             free_dataset(self.c_ds)
 
-    def print_row(self, index):
-        """
-        Print a row to the console.
+    def add_row(self, PyRow new_row):
+        add_row_v2(self.c_ds, new_row.row)
 
-        :param index: Index of the row
-        """
+    def print_row(self, index):
         print_row(self.c_ds, index)

@@ -37,6 +37,8 @@ DatasetV2 *create_dataset(const Field *schema, size_t num_fields, size_t capacit
 
 void add_row(DatasetV2 *ds, void **values);
 
+void add_row_v2(DatasetV2 *ds, Row *row);
+
 void free_dataset(DatasetV2 *ds);
 
 void shrink_capacity(DatasetV2 *ds);

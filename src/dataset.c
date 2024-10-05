@@ -91,6 +91,61 @@ void add_row(DatasetV2 *ds, void **values) {
     ds->num_rows++;
 }
 
+void add_row_v2(DatasetV2 *ds, Row *new_row) {
+    if (ds->num_rows >= ds->capacity) {
+        ds->capacity *= 2;
+        ds->rows = realloc(ds->rows, sizeof(Row) * ds->capacity);
+        if (!ds->rows) {
+            perror("Failed to reallocate memory for Row");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    Row *row = &ds->rows[ds->num_rows];
+    row->fields = malloc(sizeof(Field) * ds->num_fields);
+    if (!row->fields) {
+        perror("Failed to allocate memory for Row");
+        exit(EXIT_FAILURE);
+    }
+
+    for (size_t i = 0; i < ds->num_fields; ++i) {
+        row->fields[i].name = new_row->fields[i].name;
+        row->fields[i].name = new_row->fields[i].name;
+        row->fields[i].type = new_row->fields[i].type;
+
+        switch (row->fields[i].type) {
+            case TYPE_INT:
+                row->fields[i].data = malloc(sizeof(int));
+                if (!row->fields[i].data) {
+                    perror("Failed to allocate memory for Field");
+                    exit(EXIT_FAILURE);
+                }
+                *(int *)row->fields[i].data = *(int *)new_row->fields[i].data;
+                break;
+            case TYPE_FLOAT:
+                row->fields[i].data = malloc(sizeof(float));
+                if (!row->fields[i].data) {
+                    perror("Failed to allocate memory for Field");
+                    exit(EXIT_FAILURE);
+                }
+                *(float *)row->fields[i].data = *(float *)new_row->fields[i].data;
+                break;
+            case TYPE_STRING:
+                row->fields[i].data = strdup(new_row->fields[i].data);
+                if (!row->fields[i].data) {
+                    perror("Failed to allocate memory for Field");
+                    exit(EXIT_FAILURE);
+                }
+                break;
+            default:
+                row->fields[i].data = NULL;
+                break;
+        }
+    }
+
+    ds->num_rows++;
+}
+
 void free_dataset(DatasetV2 *ds) {
     for (size_t i = 0; i < ds->num_fields; ++i) {
         free(ds->schema[i].name);

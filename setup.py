@@ -9,12 +9,12 @@ PACKAGE_DIR = relpath(dirname(__file__))
 
 def get_extension() -> List[Extension]:
     sources = [
-        path_join(PACKAGE_DIR, "src", "_dataset.pyx"),
+        path_join(PACKAGE_DIR, "cfactorypython", "_dataset.pyx"),
         path_join(PACKAGE_DIR, "src", "dataset.c"),
     ]
     return [
         Extension(
-            name="src._dataset",
+            name="cfactorypython._dataset",
             sources=sources,
             include_dirs=["includes"],
             extra_compile_args=["-fPIC"],

@@ -40,5 +40,7 @@ cython-build:
 	python setup.py build_ext --inplace
 cython-clean:
 	python setup.py clean --all
-	rm -f src/_dataset*.so
+	rm -f cfactorypython/_dataset*.so cfactorypython/_dataset.c
+cython-test:
+	python -m unittest discover /test
 
